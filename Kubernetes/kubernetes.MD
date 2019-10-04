@@ -3,7 +3,7 @@
 
 ## Kubectl delete
 
-### Delete all pods in a service
+**Delete all pods in a service**
 
     kubectl get pods --no-headers=true | awk '/myServiceName/ {print $1}' | xargs kubectl delete pods
 
