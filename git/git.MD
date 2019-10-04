@@ -6,6 +6,13 @@
 Instructions to set up an RSA key and configuring Git with it can be found on most git sites.
 github.com is here [Adding a new SSH key to your GitHub account](https://help.github.com/en/articles/adding-a-new-ssh-key-to-your-github-account)
 
+	ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+	# mac
+	pbcopy < ~/.ssh/id_rsa.pub
+	# linux
+	xclip -sel clip < ~/.ssh/id_rsa.pub
+	
+
 ## Setting up your machine to use multiple git accounts
 First you need to setup your ~/.ssh/config using the following example. This example has multiple accounts one for the user brady and one for the user ydarb. 
 
@@ -16,10 +23,10 @@ First you need to setup your ~/.ssh/config using the following example. This exa
 		User git
 		IdentityFile ~/.ssh/brady_github.com_rsa
 
-	Host github.com-brady
+	Host github.com-ydarb
 		HostName github.com
 		User git
-		IdentifyFile ~/.ssh/brady_github.com_rsa
+		IdentifyFile ~/.ssh/ydarb_github.com_rsa
 
 **clone repo**
 
