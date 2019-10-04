@@ -21,9 +21,6 @@ First you need to setup your ~/.ssh/config using the following example. This exa
 		User git
 		IdentifyFile ~/.ssh/brady_github.com_rsa
 
-  
-
-## usage
 **clone repo**
 
     git@github.com-brady:brady/project_a.git
