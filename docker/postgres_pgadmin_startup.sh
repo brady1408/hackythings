@@ -31,5 +31,6 @@ docker run --name pgadmin \
 -e PGADMIN_DEFAULT_PASSWORD=postgres \
 -v /Users/bcole/docker/pgadmin/config_servers.json:/servers.json \
 -v /Users/bcole/docker/pgadmin:/var/lib/pgadmin \
+-p 80:80 \
 --link postgres \
 -d dpage/pgadmin4
