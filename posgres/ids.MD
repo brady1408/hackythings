@@ -1,5 +1,8 @@
 # Creating the ID Generation in the Database
 
+ - *This follows the article found [here](https://rob.conery.io/2014/05/28/a-better-id-generator-for-postgresql/)*
+ - *The origial article can be found [here](https://instagram-engineering.com/sharding-ids-at-instagram-1cf5a71e5a5c)*
+
 ## The Magical Query
 
 ```sql
