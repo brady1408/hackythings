@@ -1,0 +1,1357 @@
+syntax = "proto3";
+
+package nav.equifax.reports.commercial_parsed;
+
+import "google/protobuf/timestamp.proto";
+import "nav/date.proto";
+import "nav/states/us_state.proto";
+
+option go_package = "git.nav.com/backend/go-proto/nav/equifax/reports";
+// TODO format currency as cents
+// TODO format address as slice of address
+// TODO format phone according to rfc
+
+service Service {
+  // GetLatestParsedEquifaxCommercialReport returns the latest report. If an acceptable report (within max_age_in_seconds) is already cached, that report is returned, otherwise a new report will be pulled from Equifax Bureau.
+  rpc GetLatestParsedEquifaxCommercialReport (LatestParsedEquifaxCommercialReportRequest) returns (ParsedCommercialReportResponse) {}
+
+  // GetPriorParsedEquifaxCommercialReport returns a prior report which must be older than min_age_in_seconds. If no prior report is found, an error is returned. If multiple older reports are found, the newest will be returned.
+  rpc GetPriorParsedEquifaxCommercialReport (PriorParsedEquifaxCommercialReportRequest) returns (ParsedCommercialReportResponse) {}
+}
+
+enum AccountIndicator {
+  ACCOUNTINDICATOR_UNSPECIFIED = 0;
+  ACCOUNTINDICATOR_TERM = 1; // Business purpose loan, secured or unsecured with a fixed payment structure; closed-end loan. Usually fully amortizing, but may be structured with a balloon payment.
+  ACCOUNTINDICATOR_COMMERCIAL_CARD = 2; // Used when there is a credit line that is accessed by a credit card or check.
+  ACCOUNTINDICATOR_SERVICE = 3; // Telecom, electric, gas and water.
+  ACCOUNTINDICATOR_OPEN_ENDED_CREDIT_LINE = 4; // A revolving line of credit with no stated maturity date. Also known as an evergreen account. Accessed by check or draw.(Revolving)
+  ACCOUNTINDICATOR_LINE_OF_CREDIT = 5; // Credit Line with a stated maturity date; can be revolving or non-revolving; not accessed with a credit card.
+  ACCOUNTINDICATOR_OTHER = 6; // Some account type other than the above.
+  ACCOUNTINDICATOR_BUSINESS_LEASE = 7; // Used when there is a loan that is secured by a real asset as collateral.
+  ACCOUNTINDICATOR_LETTER_OF_CREDIT = 8; // A payment guarantee usually for the purchase of merchandise or services; normally a one-year term.
+  ACCOUNTINDICATOR_TRADE = 9; // All Non-Financial industries other than Service.
+}
+enum ActiveAccount {
+  ACTIVEACCOUNT_UNSPECIFIED = 0;
+  ACTIVEACCOUNT_YES = 1; 
+  ACTIVEACCOUNT_NO = 2; 
+}
+enum ChargeOffSource {
+  CHARGEOFFSOURCE_UNSPECIFIED = 0;
+  CHARGEOFFSOURCE_AMOUNT_EQUAL_TO_BAD_DEBT_RESERVE = 1; // Amount equal to Bad Debt Reserve
+  CHARGEOFFSOURCE_PRINCIPAL_INTEREST = 2; // Principal & Interest
+  CHARGEOFFSOURCE_PRINCIPAL_ONLY = 3; // Principal only
+}
+enum DebtorCode {
+  DEBTORCODE_UNSPECIFIED = 0;
+  DEBTORCODE_GARNISHEE_DEFENDANT = 1; // Garnishee Defendant
+  DEBTORCODE_DEBTOR = 2; // Debtor
+  DEBTORCODE_INCOMPETENT_INCAPACITATED_PERSON = 3; // Incompetent / Incapacitated Person
+  DEBTORCODE_PETITIONER = 4; // Petitioner
+  DEBTORCODE_MINOR_CHILD = 5; // Minor Child
+  DEBTORCODE_DEFENDANT = 6; // Defendant
+  DEBTORCODE_ATTORNEY = 7; // Attorney
+  DEBTORCODE_RESPONDENT = 8; // Respondent
+  DEBTORCODE_PLAINTIFF = 9; // Plaintiff
+  DEBTORCODE_HEIR = 10; // Heir
+  DEBTORCODE_ASSIGNEE = 11; // Assignee
+  DEBTORCODE_GUARDIAN_CONSERVATOR = 12; // Guardian / Conservator
+  DEBTORCODE_TRUSTEE = 13; // Trustee
+}
+enum EntityCode {
+    ENTITYCODE_UNSPECIFIED = 0;
+    ENTITYCODE_NOT_RESPONSIBLE = 1; // Not Responsible
+    ENTITYCODE_BUSINESS_NAME = 2; // Business Name
+    ENTITYCODE_INDIVIDUAL_AND_BUSINESS = 3; // Individual and Business
+    ENTITYCODE_BUSINESS_AND_BUSINESS = 4; // Business and Business
+}
+enum InquiredIndicator {
+  INQUIREDINDICATOR_UNSPECIFIED = 0;
+  INQUIREDINDICATOR_INQUIRED = 1; // INQUIRED
+}
+enum ProSe {
+  PROSE_UNSPECIFIED = 0;
+  PROSE_YES = 1; 
+  PROSE_NO = 2; 
+}
+enum ReasonClosed {
+  REASONCLOSED_UNSPECIFIED = 0;
+  REASONCLOSED_INVOLUNTARY = 1; // Involuntary
+  REASONCLOSED_OTHER = 2; // Other
+  REASONCLOSED_VOLUNTARY = 3; // Voluntary
+  REASONCLOSED_BUSINESS_DECLARED_BANKRUPTCY = 4; // Business Declared Bankruptcy
+  REASONCLOSED_FRAUDULENT_ACCOUNT = 5; // Fraudulent Account
+}
+enum RepaymentFrequency {
+  REPAYMENTFREQUENCY_UNSPECIFIED = 0;
+  REPAYMENTFREQUENCY_ANNUALLY = 1; // Annually
+  REPAYMENTFREQUENCY_MONTHLY = 2; // Monthly
+  REPAYMENTFREQUENCY_BIANNUALLY = 3; // Biannually
+  REPAYMENTFREQUENCY_SINGLE_PAYMENT = 4; // Single Payment
+  REPAYMENTFREQUENCY_OTHER = 5; // Other
+  REPAYMENTFREQUENCY_QUARTERLY = 6; // Quarterly
+}
+enum ReportType {
+  REPORT_TYPE_UNSPECIFIED = 0;
+  REPORT_TYPE_MARKETING = 1;
+  REPORT_TYPE_FREEMIUM = 2;
+  REPORT_TYPE_PREMIUM = 3;
+}
+enum SecuredAccountIndicator {
+  SECUREDACCOUNTINDICATOR_UNSPECIFIED = 0;
+  SECUREDACCOUNTINDICATOR_YES = 1; 
+  SECUREDACCOUNTINDICATOR_NO = 2;
+}
+message AccountComments { // Contains comments pertaining to an individual account.
+  enum Code {
+    CODE_UNSPECIFIED = 0;
+    CODE_REPORTING_HAS_BEEN_SUSPENDED_DUE_TO_NATURAL_OR_DECLARED_DISASTER = 1; 
+    CODE_NON_ACCRUAL_STATUS = 2; 
+    CODE_DEFERRED_PAYMENT = 3; 
+    CODE_ACCOUNT_PAID_IN_FULL_FOR_LESS_THAN_BALANCE = 4; 
+    CODE_CHARGE_OFF_ENTIRE_BALANCE = 5; 
+    CODE_INCLUDED_IN_COLLECTION = 6; 
+    CODE_COD = 7; 
+    CODE_BUSINESS_AFFECTED_BY_NATURAL_OR_DECLARED_DISASTER = 8; 
+    CODE_LOST_OR_STOLEN_CARD = 9; 
+    CODE_SOLD_OR_TRANSFERRED = 10; 
+    CODE_DISPUTE_RESOLUTION_PENDING = 11; 
+    CODE_DISCONNECT = 12; 
+    CODE_ADJUSTMENT_PENDING = 13; 
+    CODE_REPOSSESSION_OR_FORECLOSURE = 14; 
+    CODE_SUSPENDED_OR_CLOSED = 15; 
+    CODE_REFINANCED_OR_RENEWED = 16; 
+    CODE_VOLUNTARY_SURRENDER = 17; 
+    CODE_RESTRUCTURED_INVOLUNTARY_OR_HARDSHIP = 18; 
+    CODE_CHARGE_OFF_SETTLED_FOR_LESS_THAN_THE_FULL_BALANCE = 19; 
+    CODE_INCLUDED_IN_BANKRUPTCY = 20; 
+    CODE_FIRST_PAYMENT_NEVER_RECEIVED = 21; 
+  }
+  Code code = 1;
+  nav.Date date = 2;
+  int64 value = 3;
+}
+message AccountReference { // Contains an account reference NA sequence number assigned by Equifax. Note this is a persistent number. Or for those accounts contributed by the inquiring company the account number provided on the data contribution file.
+  string reference_type = 1;
+  int64 value = 2;
+}
+message AddressTrait { // Complex element containing address information.
+  string city = 1;
+  enum StandardizationStatus {
+    STANDARDIZATIONSTATUS_UNSPECIFIED = 0;
+    STANDARDIZATIONSTATUS_NOT_STANDARDIZED = 1; // Not Standardized
+    STANDARDIZATIONSTATUS_NO_STANDARDIZATION_ATTEMPTED = 2; // No Standardization Attempted
+    STANDARDIZATIONSTATUS_STANDARDIZED = 3; // Standardized
+  }
+  StandardizationStatus standardization_status = 2;
+  string country = 3;
+  states.USState state = 4;
+  string country_code = 5;
+  repeated TelephoneTrait telephone_traits = 6;
+  repeated TradeLinkInfo trade_link_infos = 7;
+  string address_line_1 = 8;
+  string postal_code = 9;
+  enum AddressType {
+    ADDRESSTYPE_UNSPECIFIED = 0;
+    ADDRESSTYPE_OTHER_ADDRESS_TYPE = 1; 
+    ADDRESSTYPE_CUSTOMER_SERVICE = 2; 
+    ADDRESSTYPE_BILLING_ACCOUNTS_PAYABLE = 3; 
+    ADDRESSTYPE_BRANCH_DISTRICT_OFFICE = 4; 
+    ADDRESSTYPE_SERVICE_METER = 5; 
+    ADDRESSTYPE_CUSTOMER_BILLING = 6; 
+    ADDRESSTYPE_MAILING_SHIPPING = 7; 
+    ADDRESSTYPE_HEADQUARTERS = 8; 
+    ADDRESSTYPE_CARE_OF = 9; 
+    ADDRESSTYPE_BUSINESS_PREMISE = 10; 
+    ADDRESSTYPE_MILITARY = 11; 
+    ADDRESSTYPE_BOTH_BUSINESS_PREMISE_AND_CARE_OF = 12; 
+  }
+  AddressType address_type = 10;
+  TraitActivity trait_activity = 11;
+}
+message AgingDollarsSlow120 { // The sum of past due amounts that are slow up to 120 days for this account type or industry group.
+  string currency = 1;
+  int64 value = 2;
+}
+message AgingDollarsSlow120Plus { // The sum of past due amounts that are slow more than 120 days for this account type or industry group.
+  string currency = 1;
+  int64 value = 2;
+}
+message AgingDollarsSlow30 { // The sum of past due amounts that are slow up to 30 days for this account type or industry group.
+  string currency = 1;
+  int64 value = 2;
+}
+message AgingDollarsSlow60 { // The sum of past due amounts that are slow up to 60 days for this account type or industry group.
+  string currency = 1;
+  int64 value = 2;
+}
+message AgingDollarsSlow90 { // The sum of past due amounts that are slow up to 90 days for this account type or industry group.
+  string currency = 1;
+  int64 value = 2;
+}
+message Alert { // Complex element Containing Alert Information.
+  string alert_description = 1;
+  enum AlertCode {
+    ALERTCODE_UNSPECIFIED = 0;
+    ALERTCODE_A_REQUIRED_SEGMENT_IDENTIFIER_IS_MISSING_OR_INVALID_FOLDER = 1; // 817: A Required Segment Identifier is Missing or Invalid Folder
+    ALERTCODE_A_SATISFIEDRELEASED_PUBLIC_RECORD_HAS_BEEN_SUPPRESSED_DUE_TO_ITS_NONCURRENCY_ALL_PUBLIC_RECORDS_FOR_THIS_BUSINESS_ARE_AVAILABLE_VIA_THE_DATA_SELECT_PUBLIC_RECORDS_PACKET = 2; // 847: A Satisfied/Released Public Record Has Been Suppressed Due to Its Non-Currency - All Public Records for This Business are Available via the Data Select Public Records Packet
+    ALERTCODE_ACTUAL_MEDIAN_CREDIT_MUST_BE_REQUESTED_WITH_A_REPORT = 3; // 829: Actual Median Credit Must Be Requested with a Report
+    ALERTCODE_ADDITIONAL_INFORMATION_WAS_LIMITED_TO_INQUIRED_AND_HEADQUARTERS_SITE_ALIASESAKAS_AND_CORRESPONDING_ID_EXTERNAL_INFORMATION = 4; // 840: Additional Information was Limited to Inquired and Headquarters Site Aliases/AKAs and Corresponding ID External Information
+    ALERTCODE_AN_ACCOUNT_OPENED_IN_THE_PAST_90_DAYS_IS_IN_CHARGEOFF_OR_COLLECTIONS_EXTERNAL = 5; // 835: An Account Opened in the Past 90 Days is in Charge-off or Collections External
+    ALERTCODE_AN_ACCOUNT_OPENED_IN_THE_PAST_90_DAYS_IS_IN_CHARGEOFF_STATUS_DUE_TO_FIRST_PAYMENT_NEVER_RECEIVED_EXTERNAL = 6; // 836: An Account Opened in the Past 90 days is in Charge-off Status Due to First Payment Never Received. External
+    ALERTCODE_BANKRUPTCY_ON_FILE_DEFAULT_RISK_RATING_TO_0_DECISIONTOOLS = 7; // 508: Bankruptcy on File - Default Risk Rating to 0 DecisionTools
+    ALERTCODE_BLENDED_PRODUCT_REQUESTED_AND_PRINCIPAL_INFORMATION_IS_MISSING_OR_REJECTED_FOLDER = 8; // 819: Blended Product Requested and Principal Information is Missing or Rejected Folder
+    ALERTCODE_BLENDED_PRODUCT_REQUESTED_WITH_INVALID_TRANID_FOLDER = 9; // 820: Blended Product Requested with Invalid TranID Folder
+    ALERTCODE_CANNOT_PROCESS_INQUIRY_RESUBMIT_WITH_DATA_SUBMISSION_NUMBER = 10; // 827: Cannot Process Inquiry. Resubmit with Data Submission Number
+    ALERTCODE_CITY_STATE_AND_ZIP_DID_NOT_MATCH_THE_USPS_TABLE_ADDRESS = 11; // 815: *City, State, and Zip Did Not Match the USPS Table Address
+    ALERTCODE_COMPANY_ADDRESS_LINES_ARE_NOT_EQUALVERIFY_COMPANY_ADDRESS_ADDRESS = 12; // 810: *Company Address Lines are Not EqualVerify Company Address Address
+    ALERTCODE_COMPANY_CITY_STATE_ZIP_ARE_NOT_EQUAL_VERIFY_COMPANY_ADDRESS_ADDRESS = 13; // 811: *Company City, State, ZIP are Not Equal - Verify Company Address Address
+    ALERTCODE_COMPANY_FILE_AND_INQUIRY_SSNTAX_IDS_ARE_NOT_EQUALIDNUMBER = 14; // 804: *Company File and Inquiry SSN/Tax IDs are Not EqualIDNumber
+    ALERTCODE_COMPANY_NAMES_ARE_NOT_EQUALVERIFY_COMPANY_NAME_COMPANY_NAME = 15; // 809: *Company Names are Not EqualVerify Company Name Company Name
+    ALERTCODE_COULD_NOT_FIND_CITY_NAME_IN_THE_USPS_CITY_STATE_ZIP_FILE_ADDRESS = 16; // 101: Could Not Find City Name in the USPS City State Zip File Address
+    ALERTCODE_CREDIT_REPORT_SUMMARYHIGHLIGHTS_ARE_ONLY_POPULATED_WHEN_THE_LEGAL_ENTITY_HAS_A_TRADELINE_WITH_A_DATE_REPORTED_OR_CLOSED_WITHIN_24_MONTHS_OF_INQUIRY = 17; // 848: Credit Report Summary/Highlights Are Only Populated When the Legal Entity Has a Tradeline with a Date Reported or Closed Within 24 Months of Inquiry
+    ALERTCODE_CUSTOMER_CODE_IS_NOT_EDAT = 18; // 003: Customer Code is not EDAT
+    ALERTCODE_DUE_TO_VOLUME_OF_DETAIL_IN_THIS_CREDIT_FILE_PRINCIPAL_SEARCH_RESULTS_WILL_NOT_DISPLAY_EXTERNAL = 19; // 830: Due to Volume of Detail in This Credit File, Principal Search Results Will Not Display External
+    ALERTCODE_FACT_ACT_ACTIVE_DUTY_ALERT_FACT_ACTBLENDED_PRODUCTS_ONLY = 20; // 512: FACT ACT - Active Duty Alert FACT ActBlended products only
+    ALERTCODE_FACT_ACT_ACTIVE_DUTY_ALERT_WITH_CA_RESIDENT_FRAUD_VICTIM_T_FACT_ACTBLENDED_PRODUCTS_ONLY = 21; // 516: FACT ACT - Active Duty Alert with CA Resident Fraud Victim T FACT ActBlended products only
+    ALERTCODE_FACT_ACT_ACTIVE_DUTY_ALERT_WITH_CA_RESIDENT_FRAUD_VICTIMSEE_COMMENTS_SECTION_FACT_ACTBLENDED_PRODUCTS_ONLY = 22; // 515: FACT ACT - Active Duty Alert with CA Resident Fraud VictimSee Comments Section FACT ActBlended products only
+    ALERTCODE_FACT_ACT_ACTIVE_DUTY_ALERT_WITH_FRAUD_VICTIM_INITIAL_ALERT_FACT_ACTBLENDED_PRODUCTS_ONLY = 23; // 514: FACT ACT - Active Duty Alert with Fraud Victim - Initial Alert FACT ActBlended products only
+    ALERTCODE_FACT_ACT_ACTIVE_DUTY_ALERT_WITH_FRAUD_VICTIM_INITIAL_ALERTSEE_COMMENTS_SECTION_FACT_ACTBLENDED_PRODUCTS_ONLY = 24; // 513: FACT ACT - Active Duty Alert with Fraud Victim - Initial AlertSee Comments Section FACT ActBlended products only
+    ALERTCODE_FACT_ACT_ACTIVE_DUTY_ALERT_WITH_FRAUD_VICTIMEXTENDED_ALERT_FACT_ACTBLENDED_PRODUCTS_ONLY = 25; // 522: FACT ACT - Active Duty Alert with Fraud VictimExtended Alert FACT ActBlended products only
+    ALERTCODE_FACT_ACT_ACTIVE_DUTY_ALERT_WITH_FRAUD_VICTIMEXTENDED_ALERTSEE_COMMENTS_SECTION_FACT_ACTBLENDED_PRODUCTS_ONLY = 26; // 521: FACT ACT - Active Duty Alert with Fraud VictimExtended AlertSee Comments Section FACT ActBlended products only
+    ALERTCODE_FACT_ACT_ACTIVE_DUTY_ALERTSEE_COMMENTS_SECTION_FACT_ACTBLENDED_PRODUCTS_ONLY = 27; // 511: FACT ACT - Active Duty AlertSee Comments Section FACT ActBlended products only
+    ALERTCODE_FACT_ACT_ADDRESS_DISCREPANCYSUBSTANTIAL_DIFFERENCE_OF_PRINCIPAL_ADDRESS_AS_ON_CREDIT_FILE_WHEN_FACT_ACTBLENDED_PRODUCTS_ONLY_COMPARED_TO_INPUT_VERIFY = 28; // 525: FACT ACT - Address DiscrepancySubstantial Difference of Principal Address as on Credit File When FACT ActBlended products only Compared to Input - Verify
+    ALERTCODE_FACT_ACT_ADDRESS_ELEMENTS_NOT_AVAILABLE_OR_NOT_UTILIZED_FACT_ACTBLENDED_PRODUCTS_ONLY = 29; // 527: FACT ACT - Address Elements Not Available or Not Utilized FACT ActBlended products only
+    ALERTCODE_FACT_ACT_FRAUD_VICTIMCA_RESIDENT_ASSOCIATED_WITH_TRADE_FACT_ACTBLENDED_PRODUCTS_ONLY = 30; // 518: FACT ACT - Fraud VictimCA Resident Associated with Trade FACT ActBlended products only
+    ALERTCODE_FACT_ACT_FRAUD_VICTIMCA_RESIDENT_ASSOCIATED_WITH_TRADESEE_COMMENTS_SECTION_FACT_ACTBLENDED_PRODUCTS_ONLY = 31; // 517: FACT ACT - Fraud VictimCA Resident Associated with TradeSee Comments Section FACT ActBlended products only
+    ALERTCODE_FACT_ACT_FRAUD_VICTIMEXTENDED_ALERT_FACT_ACTBLENDED_PRODUCTS_ONLY = 32; // 524: FACT ACT - Fraud VictimExtended Alert FACT ActBlended products only
+    ALERTCODE_FACT_ACT_FRAUD_VICTIMEXTENDED_ALERTSEE_COMMENTS_SECTION_FACT_ACTBLENDED_PRODUCTS_ONLY = 33; // 523: FACT ACT - Fraud VictimExtended AlertSee Comments Section FACT ActBlended products only
+    ALERTCODE_FACT_ACT_FRAUD_VICTIMINITIAL_ALERT_FACT_ACTBLENDED_PRODUCTS_ONLY = 34; // 520: FACT ACT - Fraud VictimInitial Alert FACT ActBlended products only
+    ALERTCODE_FACT_ACT_FRAUD_VICTIMINITIAL_ALERTSEE_COMMENTS_SECTION_FACT_ACTBLENDED_PRODUCTS_ONLY = 35; // 519: FACT ACT - Fraud VictimInitial AlertSee Comments Section FACT ActBlended products only
+    ALERTCODE_FACT_ACT_NO_SUBSTANTIAL_DIFFERENCE_BETWEEN_PRINCIPAL_ADDRESS_ON_CREDIT_FILE_AND_INPUT_FACT_ACTBLENDED_PRODUCTS_ONLY = 36; // 526: FACT ACT - No Substantial Difference between Principal Address on Credit File and Input FACT ActBlended products only
+    ALERTCODE_FILE_AND_INQUIRY_TIN_MISMATCH_FURTHER_VERIFICATION_OF_ID_SUGGESTED_IDNUMBER = 37; // 002: File and Inquiry TIN Mismatch - Further Verification of ID Suggested IDNumber
+    ALERTCODE_FILE_AND_INQUIRY_ZIP_CODE_MISMATCH_ADDRESS = 38; // 001: File and Inquiry Zip Code Mismatch Address
+    ALERTCODE_GENERIC_SOFTWARE_ERROR_FOLDER = 39; // 010: Generic software error Folder
+    ALERTCODE_ID_VERIFICATION_RECOMMENDED_EXTERNAL = 40; // 529: ID Verification Recommended External
+    ALERTCODE_INPUT_FORMAT_IS_NOT_A_VALID_VALUE_HEADER = 41; // 004: Input Format is Not a Valid Value Header
+    ALERTCODE_INQUIRY_WAS_DETERMINED_TO_BE_A_FORMER_ADDRESS_THE_CURRENT_ADDRESS_WAS_RETURNED_ON_THIS_REPORT_EXTERNAL = 42; // 839: Inquiry was Determined to be a Former Address. The Current Address Was Returned on This Report. External
+    ALERTCODE_INQUIRY_ZIP_CODE_IS_NOT_5_OR_9_BYTES_OF_NUMERIC_ADDRESS = 43; // 100: Inquiry Zip Code is Not 5 or 9 Bytes of Numeric Address
+    ALERTCODE_INSUFFICIENT_DATA_AVAILABLE_TO_CALCULATE_AVG_DBT_NONFINANCIALSUMMARY = 44; // 505: Insufficient Data Available to Calculate Avg. DBT NonFinancialSummary
+    ALERTCODE_INSUFFICIENT_DATA_AVAILABLE_TO_CALCULATE_CREDIT_UTILIZATION_FINANCIALSUMMARY = 45; // 500: Insufficient Data Available to Calculate Credit Utilization FinancialSummary
+    ALERTCODE_INSUFFICIENT_DATA_AVAILABLE_TO_CALCULATE_DAYS_BEYOND_TERMS_NONFINANCIALSUMMARY = 46; // 501: Insufficient Data Available to Calculate Days Beyond Terms NonFinancialSummary
+    ALERTCODE_INSUFFICIENT_DATA_AVAILABLE_TO_CALCULATE_PAYMENT_INDEX_EXTERNAL = 47; // 531: Insufficient Data Available to Calculate Payment Index External
+    ALERTCODE_INSUFFICIENT_DATA_AVAILABLE_TO_CALCULATE_RECENT_DBT_NONFINANCIALSUMMARY = 48; // 504: Insufficient Data Available to Calculate Recent DBT NonFinancialSummary
+    ALERTCODE_INSUFFICIENT_PRINCIPAL_INFORMATION_PROVIDED_TO_PROCESS_THIS_SCORE_USED_ONLY_COMMERCIAL_INFORMATION_EXTERNAL = 49; // 823: Insufficient Principal Information Provided to Process - This Score Used Only Commercial Information External
+    ALERTCODE_INTERNAL_USE = 50; // 344, 345, 346, 347, 340, 341, 342, 343, 348, 349, 736, 768, 769, 762, 763, 760, 761, 766, 767, 764, 765, 678, 679, 674, 675, 676, 677, 670, 671, 672, 673, 537, 536, 535, 534, 533, 532, 539, 538, 429, 428, 421, 420, 423, 422, 425, 424, 427, 426, 308, 309, 301, 302, 303, 304, 305, 306, 307, 649, 648,  719, 718, 717, 716, 715, 714, 713, 712, 711, 710, 591, 590, 593, 592, 595, 594, 597, 596, 599, 598,  449, 448, 443, 442, 441, 440, 447, 446, 445, 444, 641, 640, 643, 642, 645, 644, 438, 439, 436, 437, 434, 435, 432, 433, 430, 431, 339, 338, 335, 334, 337, 336, 331, 330, 333, 332, 744, 745, 748, 749,  708, 709, 704, 705, 706, 707, 700, 701, 702, 703, 797, 796, 795, 794, 793, 792, 791, 790, 799, 798, 586, 587, 584, 585, 582, 583, 580, 581, 588, 589,  623, 459, 621, 620, 627, 626, 625, 624, 450, 451, 452, 628, 454, 455, 456, 457, 656, 657, 654, 655, 652, 653, 650, 651, 658, 659, 753, 752, 756, 322, 323, 320, 321, 326, 327, 324, 325, 328, 329, 759,  784, 785, 786, 787, 780, 781, 782, 783, 788, 789, 579, 578, 573, 572, 571, 570, 577, 576, 575, 574, 731, 730, 733, 732, 735, 734, 630, 631, 632, 633, 469, 468, 636, 637, 465, 464, 467, 466, 461, 460, 463, 462, 357, 356, 355, 354, 353, 352, 351, 350, 359, 358, 568, 569, 751, 750, 757, 737, 755, 754, 560, 561, 562, 563, 564, 565, 566, 567, 739, 738, 726, 727, 724, 725, 722, 723, 720, 721, 728, 729, 605, 604, 607, 606, 601, 600, 603, 602, 609, 608, 634, 635, 638, 639, 489, 488, 487, 486, 485, 484, 483, 482, 481, 480, 472, 473, 470, 471, 476, 477, 474, 475, 478, 479,  612, 740, 741, 742, 743, 559, 558, 746, 747, 555, 554, 557, 556, 551, 550, 553, 552, 618, 619, 613, 610, 611, 616, 617, 614, 615, 689, 688, 685, 684, 687, 686, 681, 680, 683, 682, 458, 622, 498, 499, 494, 495, 496, 497, 490, 491, 492, 493, 407, 406, 405, 404, 403, 402, 401, 400, 629, 409, 408, 453, 758, 379, 378, 371, 370, 373, 372, 375, 374, 377, 376, 393, 392, 391, 390, 397, 396, 395, 394, 399, 398, 775, 774, 777, 776, 771, 770, 773, 772, 779, 778, 669, 668, 667, 666, 665, 664, 663, 662, 661, 660, 692, 693, 690, 691, 696, 697, 694, 695, 698, 699, 542, 543, 540, 541, 546, 547, 544, 545, 548, 549, 414, 415, 416, 417, 410, 411, 412, 413, 418, 419, 319, 318, 313, 312, 311, 310, 317, 316, 315, 314, 368, 369, 366, 367, 364, 365, 362, 363, 360, 361, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 647, 646: Internal Use
+    ALERTCODE_INTERNAL_USE_OR_OTHER = 51; // 298, 299, 296, 297, 294, 295, 292, 293, 290, 291, 199, 198, 195, 194, 197, 196, 191, 190, 193, 192, 270, 271, 272, 273, 274, 275, 276, 277, 278, 279, 108, 109, 106, 107, 104, 105, 245, 244, 247, 246, 241, 240, 243, 242, 249, 248, 179, 178, 177, 176, 175, 174, 173, 172, 171, 170, 182, 183, 180, 181, 186, 187, 184, 185, 188, 189, 258, 259, 252, 253, 250, 251, 256, 257, 254, 255, 168, 169, 164, 165, 166, 167, 160, 161, 162, 163, 229, 228, 227, 226, 225, 224, 223, 222, 221, 220, 151, 150, 153, 152, 155, 154, 157, 156, 159, 158, 238, 239, 234, 235, 236, 237, 230, 231, 232, 233, 146, 147, 144, 145, 142, 143, 140, 141, 148, 149, 133, 132, 131, 130, 137, 136, 135, 134, 139, 138, 201, 200, 203, 202, 205, 204, 207, 206, 209, 208, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 216, 217, 214, 215, 212, 213, 210, 211, 218, 219, 289, 288, 281, 280, 283, 282, 285, 284, 287, 286, 263, 262, 261, 260, 267, 266, 265, 264, 269, 268, 115, 114, 117, 116, 111, 110, 113, 112, 119, 118: Internal Use or Other
+    ALERTCODE_INVALID_PERMISSIBLE_PURPOSE_CODE_PRODUCT_NOT_RETURNED = 52; // 803: Invalid Permissible Purpose Code - Product Not Returned
+    ALERTCODE_INVALID_PRODUCT_NAME_OR_CODE_PRODUCT_NOT_RETURNED = 53; // 802: Invalid Product Name or Code - Product Not Returned
+    ALERTCODE_INVALID_REPORT_PRODUCT_NAME_OR_CODESTANDARD_DEFAULT_USED_CUSTOMER_SECURITY_INFO = 54; // 801: Invalid Report Product Name or CodeStandard Default Used Customer Security Info
+    ALERTCODE_LEGAL_ENTITY_HAS_MORE_THAN_ONE_SITE_EXTERNAL = 55; // 838: *Legal Entity Has More Than One Site External
+    ALERTCODE_LEGAL_ENTITY_HAS_ONE_OR_MORE_OPEN_CHARGEOFFS_EXTERNAL = 56; // 837: Legal Entity Has One or More Open Charge-offs. External
+    ALERTCODE_MAXIMUM_FILE_SIZE_EXCEEDED_REPORT_CONTAINS_SUMMARY_INFORMATION_ONLY_FOLDER = 57; // 503: Maximum File Size Exceeded - Report Contains Summary Information Only Folder
+    ALERTCODE_MAXIMUM_FILE_SIZE_EXCEEDED_TRADE_HISTORY_WILL_NOT_BE_RETURNEDFOLDER = 58; // 510: Maximum File Size Exceeded - Trade History Will Not be ReturnedFolder
+    ALERTCODE_MAXIMUM_NUMBER_OF_PRINCIPALGUARANTOR_SEGMENTS_EXCEEDED_ADDITIONAL_SEGMENTS_WERE_DROPPED_PRINCIPAL = 59; // 818: Maximum Number of Principal/Guarantor Segments Exceeded - Additional Segments Were Dropped Principal
+    ALERTCODE_NO_AVAILABLE_CREDIT_REMAINING_FINANCIALSUMMARY = 60; // 502: No Available Credit Remaining FinancialSummary
+    ALERTCODE_NOT_USED = 61; // 509, 506: Not Used
+    ALERTCODE_NOT_USED_AVAILABLE = 62; // 007, 009, 008, 089, 088, 083, 082, 081, 080, 087, 086, 085, 084, 011, 012, 013, 014, 015, 016, 017, 018, 098, 099, 090, 091, 092, 093, 094, 095, 096, 097, 025, 024, 027, 026, 021, 020, 023, 022, 029, 058, 059, 054, 055, 056, 057, 050, 051, 052, 053, 061, 060, 063, 062, 065, 064, 067, 066, 069, 068, 076, 077, 074, 075, 072, 073, 070, 071, 078, 038, 039, 032, 033, 030, 031, 036, 037, 034, 049, 048, 047, 046, 045, 044, 043, 042, 041, 040, 806: Not UsedAvailable
+    ALERTCODE_NOTE_UPDATED_EFX_ID_NUMBER_FOLDER = 63; // 530: Note Updated EFX ID Number Folder
+    ALERTCODE_ONLY_THE_EFX_ID_WAS_USED_FOR_MATCHING_EXTERNAL = 64; // 826: Only the EFX ID was Used for Matching External
+    ALERTCODE_OUTPUT_FORMAT_IS_NOT_A_VALID_VALUE_HEADER = 65; // 005: Output Format is Not a Valid Value Header
+    ALERTCODE_PRINCIPALGUARANTOR_FILE_AND_INQUIRY_SSNTAX_IDS_ARE_NOT_EQUALIDNUMBER = 66; // 805: *Principal/Guarantor File and Inquiry SSN/Tax IDs are Not EqualIDNumber
+    ALERTCODE_PRINCIPALGUARANTOR_NAME_CONTAINED_FIRST_NAME_ONLY_PERSONNAME = 67; // 808: Principal/Guarantor Name Contained First Name Only PersonName
+    ALERTCODE_PRINCIPALGUARANTOR_NAME_CONTAINED_LAST_NAME_ONLY_PERSONNAME = 68; // 807: Principal/Guarantor Name Contained Last Name Only PersonName
+    ALERTCODE_PRODUCT_CODE_IS_NOT_A_VALID_VALUE_HEADER = 69; // 006: Product Code is Not a Valid Value Header
+    ALERTCODE_PUBLIC_RECORD_ONLY_FILE_FOLDER = 70; // 507: Public Record Only File Folder
+    ALERTCODE_RESERVED = 71; // 824, 825: Reserved
+    ALERTCODE_SBE_TECHNICAL_ERROR_CONTACT_EQUIFAX_REPRESENTATIVE = 72; // 103: SBE Technical Error - Contact Equifax Representative
+    ALERTCODE_SEE_APPENDIX_E_ERROR_CODES = 73; // 841: See Appendix E: Error Codes
+    ALERTCODE_SSNTAX_ID_IS_NOT_9_BYTES_OF_NUMERIC_IDNUMBER = 74; // 102: SSN/Tax ID is Not 9 Bytes of Numeric IDNumber
+    ALERTCODE_SUGGESTED_CREDIT_LIMIT_MUST_BE_REQUESTED_WITH_A_REPORT_OR_A_DECISIONING_TOOL = 75; // 828: Suggested Credit Limit Must be Requested with a Report or a Decisioning Tool
+    ALERTCODE_SUPPRESSED_DUE_TO_LOW_CONFIDENCE_EXTERNAL = 76; // 528: Suppressed Due to Low Confidence External
+    ALERTCODE_THE_DATA_RETURNED_IN_THIS_REPORT_REPRESENTS_ALL_OF_THE_TRADELINES_ON_THIS_BUSINES_REGARDLESS_OF_MOST_RECENT_DATE_REPORTED_RETURNED_ON_DATA_SELECT_CURRENT_TRADE_AND_ACCOUNT_HISTORY_REPORTS_ONLY = 77; // 846: The Data Returned in This Report Represents All of the Tradelines on This Busines Regardless of Most Recent Date Reported (Returned on Data Select Current Trade and Account History reports only)
+    ALERTCODE_THE_FOLDER_CONTAINED_INSUFFICIENT_INFORMATION_FOR_ONE_OR_MORE_DATA_SELECT_PRODUCTS_TO_BE_RETURNED_EXTERNAL = 78; // 832: The Folder Contained Insufficient Information for One or More Data Select Products To Be Returned External
+    ALERTCODE_THE_FOLDER_CONTAINED_INSUFFICIENT_INFORMATION_FOR_ONE_OR_MORE_PRODUCTS_TO_BE_RETURNED = 79; // 842: The Folder Contained Insufficient Information for One or More Products To Be Returned
+    ALERTCODE_THE_REQUESTED_BLENDED_PRODUCTS_ARE_NOT_VALID_WITH_CONFIDENCE_LEVEL_FOLDER = 80; // 822: The Requested Blended Product(s) are Not Valid with Confidence Level. Folder
+    ALERTCODE_THE_SEGMENT_IDENTIFIER_IS_INVALID_THE_SEGMENT_WILL_NOT_BE_CONVERTED_FOLDER = 81; // 816: The Segment Identifier is Invalid - The Segment Will Not be Converted Folder
+    ALERTCODE_THIS_BUSINESS_HAS_A_DISCHARGED_OR_DISMISSED_BANKRUPTCY_FULL_DETAILS_ARE_AVAILABLE_IN_DATA_SELECT_PUBLIC_RECORDS = 82; // 844: This Business Has a Discharged or Dismissed Bankruptcy - Full Details are Available in Data Select Public Records
+    ALERTCODE_THIS_BUSINESS_ONLY_HAS_TRADELINES_WITH_A_DATE_CLOSED_OR_REPORTED_GREATER_THAN_24_MONTHS_FROM_INQUIRY_DATE = 83; // 845: This Business Only Has Tradelines with a Date Closed or Reported Greater Than 24 Months from Inquiry Date
+    ALERTCODE_THIS_BUSINESS_OR_ONE_OF_ITS_SITES_IS_IN_AN_AREA_THAT_MAY_HAVE_BEEN_IMPACTED_BY_A_NATURAL_DISASTER_OR_OTHER_FOLDER_CATASTROPHIC_EVENT = 84; // 300: This business or one of its sites is in an area that may have been impacted by a natural disaster or other Folder catastrophic event.
+    ALERTCODE_THIS_FILE_CONTAINS_PUBLIC_RECORDSTHIS_VERSION_DOES_NOT_SUPPORT_PUBLIC_RECORD_OUTPUT_FOLDER = 85; // 821: This File Contains Public RecordsThis Version Does Not Support Public Record Output Folder
+    ALERTCODE_TOO_MANY_PRODUCTS_REQUESTED_IN_THIS_INQUIRY_ONLY_SOME_PRODUCTS_WERE_RETURNED_EXTERNAL = 86; // 831: Too Many Products Requested in This Inquiry
+    ALERTCODE_ULTIMATE_PARENT_IS_LOCATED_OUTSIDE_OF_THE_UNITED_STATES_THIS_REPORT_IS_BASED_ON_INFORMATION_REPORTED_ON = 87; // 843: Ultimate parent is Located Outside of the United States. This Report is Based on Information Reported on
+    ALERTCODE_UNABLE_TO_FIND_A_MATCH_FOLDER = 88; // 800: Unable to Find a Match Folder
+    ALERTCODE_UNABLE_TO_FIND_A_MATCH_NO_COMPANY_ADDRESS_WAS_SUPPLIED_ON_INPUT_ADDITION_OF_COMPANY_ADDRESS_MAY_PROVIDE_ENOUGH_INFORMATION_TO_MATCH = 89; // 813: Unable to Find a Match - No Company Address was Supplied on Input - Addition of Company Address May Provide Enough Information to Match
+    ALERTCODE_UNABLE_TO_FIND_A_MATCH_NO_COMPANY_NAME_WAS_SUPPLIED_ON_INPUT_ADDITION_OF_COMPANY_NAME_MAY_PROVIDE_ENOUGH_INFORMATION_TO_MATCH = 90; // 812: Unable to Find a Match - No Company Name was Supplied on Input - Addition of Company Name May Provide Enough Information to Match
+    ALERTCODE_UNABLE_TO_FIND_A_MATCH_NO_COMPANY_SSN_OR_TAX_ID_WAS_SUPPLIED_ON_INPUT_ADDITION_OF_COMPANY_SSN_OR_TAX_ID_MAY_PROVIDE_ENOUGH_INFORMATION_TO_MATCH = 91; // 814: Unable to Find a Match - No Company SSN or Tax ID was Supplied on Input - Addition of Company SSN or Tax ID May Provide Enough Information to Match
+    ALERTCODE_UNABLE_TO_SEARCH_FOR_RELATED_FILES_INSUFFICIENT_PRINCIPAL_INFORMATION_SUPPLIED_EXTERNAL = 92; // 833: Unable to Search for Related Files. Insufficient Principal Information Supplied External
+    ALERTCODE_WE_ARE_UNABLE_TO_PROCESS_YOUR_REQUEST_AT_THIS_TIME_PLEASE_TRY_AGAIN_LATER = 93; // 834: We are Unable to Process Your Request at This Time. Please Try Again Later
+  }
+  AlertCode alert_code = 2;
+}
+message AmtPastDueCycle1 { // That portion of the Total Past Due amount which is 1-30 days beyond the due date. May be negative - indicated by a negative (-) sign.
+  string currency = 1;
+  int64 value = 2;
+}
+message AmtPastDueCycle2 { // That portion of the Total Past Due amount which is 31 - 60 days beyond the due date. May be negative - indicated by a negative (-) sign.
+  string currency = 1;
+  int64 value = 2;
+}
+message AmtPastDueCycle3 { // That portion of the Total Past Due amount which is 61-90 days beyond the due date. May be negative - indicated by a negative (-) sign.
+  string currency = 1;
+  int64 value = 2;
+}
+message AmtPastDueCycle4 { // That portion of the Total Past Due amount which is 91-120 days beyond the due date. May be negative - indicated by a negative (-) sign.
+  string currency = 1;
+  int64 value = 2;
+}
+message AmtPastDueCycle5 { // That portion of the Total Past Due amount which is over 120 days beyond the due date. May be negative - indicated by a negative (-) sign.
+  string currency = 1;
+  int64 value = 2;
+}
+message AnnualSalesRange { // Annual Sales Volume. Consists of a code attribute and verbiage.
+  enum Code {
+    CODE_UNSPECIFIED = 0;
+    CODE_250000000_499999999 = 1; // $250,000,000 - $499,999,999
+    CODE_100000000_249999999 = 2; // $100,000,000 - $249,999,999
+    CODE_500000000_749999999 = 3; // $500,000,000 - $749,999,999
+    CODE_1500000000_PLUS = 4; // $1,500,000,000 plus
+    CODE_1000000000_1499999999 = 5; // $1,000,000,000 - $1,499,999,999
+    CODE_250000_499999 = 6; // $250,000 - $499,999
+    CODE_500000_999999 = 7; // $500,000 - $999,999
+    CODE_750000000_999999999 = 8; // $750,000,000 - $999,999,999
+    CODE_1_249999 = 9; // $1  $249,999
+    CODE_5000000_9999999 = 10; // $5,000,000 - $9,999,999
+    CODE_10000000_24999999 = 11; // $10,000,000 - $24,999,999
+    CODE_1000000_2499999 = 12; // $1,000,000 - $2,499,999
+    CODE_2500000_4999999 = 13; // $2,500,000 - $4,999,999
+    CODE_25000000_49999999 = 14; // $25,000,000 - $49,999,999
+    CODE_50000000_99999999 = 15; // $50,000,000 - $99,999,999
+  }
+  Code code = 1;
+  
+}
+message AtRiskBal { // This sum is equal to the total balance (including amount not yet due) for delinquent but not charged off accounts. Accounts with only current balances are not considered at risk because the business has no delinquencies and has been paying in accordance with the agreed upon terms.
+  string currency = 1;
+  int64 value = 2;
+}
+message AverageOpenBalance { // The average balance of all open, non-charged-off accounts. There must be at least two tradelines for this value to be returned.
+  string currency = 1;
+  int64 value = 2;
+}
+message AvgDBT { // The dollar weighted days beyond terms on non-financial accounts within the last 12 months from the date of inquiry
+  int64 dbt = 1;
+  nav.Date date_dbt = 2;
+}
+message BalDue { // Current Portion Of Balance Due. Total reported amount that has been charged but is not yet due or late.
+  string currency = 1;
+  int64 value = 2;
+}
+message BalanceAmount { // Current balance of the account
+  string currency = 1;
+  int64 value = 2;
+}
+message BalanceTotals { // Sum of the values contained in the Balance Amount elements for all Current Trade elements, regardless of account status.
+  string currency = 1;
+  int64 value = 2;
+}
+message BankruptcyTrait { // Complex element containing bankruptcy information.
+  CurrentPublicRecord current_public_record = 1;
+  repeated PublicRecordID public_record_ids = 2;
+}
+message BusinessContactTrait { // Complex element containing business contact information.
+  repeated TitleTrait title_traits = 1;
+  TraitActivity trait_activity = 2;
+  IdTrait id_trait = 3;
+}
+message ChargeOffAmount { // The original amount charged to loss, regardless of the declining balance.
+  string currency = 1;
+  int64 value = 2;
+}
+message ChargeOffAmt { // The sum of all charged off amounts for the accounts reported within 24 calendar months of the inquiry date indicated as charged off.
+  string currency = 1;
+  int64 value = 2;
+}
+message ChargeOffRecoveryAmount { // The amount of the Charge-Off Amount that has been recovered.
+  string currency = 1;
+  int64 value = 2;
+}
+message ClosedNonFiByIndGroup { // Complex element containing summary elements for closed non-financial accounts grouped by industry group.
+  repeated ClosedSummaryAttributes closed_summary_attributes = 1;
+  TimePeriod time_period = 2;
+  ClosedSummaryAttributesTotals closed_summary_attributes_totals = 3;
+}
+message ClosedSummaryAttributes { // Complex element containing summary elements for Closed accounts.
+  nav.Date most_recent_date_delinquent = 1;
+  int64 num_current_accts = 2;
+  SumOfHighCredit sum_of_high_credit = 3;
+  SumOfBalChargeOff sum_of_bal_charge_off = 4;
+  nav.Date most_recent_date_current = 5;
+  string single_hi_credit_ext_or_bal_owed = 6;
+  SumOfBalDelinquent sum_of_bal_delinquent = 7;
+  int64 num_delinquent_accts = 8;
+  nav.Date most_recent_date_charge_off = 9;
+  string industry_group = 10;
+  int64 num_charge_off_accts = 11;
+}
+message ClosedSummaryAttributesTotals { // Complex element containing summary element totals for Closed accounts.
+  int64 num_current_accts = 1;
+  int64 num_delinquent_accts = 2;
+  SumOfBalChargeOff sum_of_bal_charge_off = 3;
+  SumOfBalDelinquent sum_of_bal_delinquent = 4;
+  int64 num_charge_off_accts = 5;
+}
+message CommentsTrait { // Complex element containing Business and Credit Grantor Comments.
+  nav.Date reported_date = 1;
+  string comment_source = 2;
+  string statement = 3;
+}
+message CommercialCreditReport {
+  Header header = 1;
+  Folder folder = 2;
+}
+message CompanyNameTrait { // Complex element containing company name information
+  string naics_description = 1;
+  string business_name = 2;
+  repeated string naics_code = 3;
+  repeated string sic_code = 4;
+  repeated TradeLinkInfo trade_link_infos = 5;
+  string legal_business_name = 6;
+  string sic_description = 7;
+  repeated string doing_business_as = 8;
+  TraitActivity trait_activity = 9;
+}
+message CompanyOwnership { // Indicates whether the business is publicly or privately held. Consists of both code and verbiage
+  enum Code {
+    CODE_UNSPECIFIED = 0;
+    CODE_PUBLIC = 1; // Public
+    CODE_PRIVATE = 2; // Private
+  }
+  Code code = 1;
+  
+}
+message CorpStatusCode { // A code indicating the status of the business registration with the reporting Secretary of States office. Blank = Not Reported Active(Indicates that the registration fee has been paid; does not imply that the business is a going concern). Inactive (Indicates that the fee has not been paid, the registration has been suspended or the business has filed termination papers with the state).
+  enum Code {
+    CODE_UNSPECIFIED = 0;
+    CODE_BLANK = 1; 
+    CODE_ACTIVE = 2; 
+    CODE_INACTIVE = 3; 
+  }
+  Code code = 1;
+}
+message CountryDBT { // Complex element containing Country DBT
+  string country = 1;
+  repeated DataPoint data_points = 2;
+}
+message CourtLocation { // Complex element containing information regarding the court location.
+  string city = 1;
+  states.USState state = 2;
+}
+message CurrentBalance { // Current balance on the account
+  string source = 1;
+  string currency = 2;
+  int64 value = 3;
+}
+message CurrentCreditLimit { // Current credit limit of account
+  string currency = 1;
+  int64 value = 2;
+}
+message CurrentCreditLimitTotals { // Sum of the values contained in the Current Credit Limit elements, regardless of account status.
+  string currency = 1;
+  int64 value = 2;
+}
+message CurrentFirm { // Complex element containing firmographic information about the company
+  string naics_description = 1;
+  string mm_group_id = 2;
+  NumberOfEmployees number_of_employees = 3;
+  CompanyOwnership company_ownership = 4;
+  LocationDescription location_description = 5;
+  string year_started = 6;
+  string sic_code = 7;
+  AnnualSalesRange annual_sales_range = 8;
+  LiabilityIndicator liability_indicator = 9;
+  string latitude = 10;
+  string longitude = 11;
+  string sic_description = 12;
+  string naics_code = 13;
+  TraitActivity trait_activity = 14;
+  int64 years_in_business = 15;
+}
+message CurrentPublicRecord { // Complex element containing information about a public record
+  string exempt_amount = 1;
+  EntityCode entity_code = 2;
+  TotalAssets total_assets = 3;
+  DebtorCode debtor_code = 4;
+  nav.Date disposition_date = 5;
+  enum FilerCode {
+    FILERCODE_UNSPECIFIED = 0;
+    FILERCODE_INDIVIDUAL = 1; // Individual
+    FILERCODE_MULTIPLE = 2; // Multiple
+  }
+  FilerCode filer_code = 6;
+  string case_number = 7;
+  TraitActivity trait_activity = 8;
+  string cause_of_action = 9; // cause_of_action is technically an enum, but changes based on which parent object uses it. See Appendix G of https://navinc.atlassian.net/wiki/download/attachments/542244865/Commercial%20XML%20Data%20Dictionary%20Version%205%200.pdf?version=2&modificationDate=1532115256454&cacheVersion=1&api=v2
+  enum RelationshipCode {
+    RELATIONSHIPCODE_UNSPECIFIED = 0;
+    RELATIONSHIPCODE_NOW_KNOWN_AS = 1; // Now Known As
+    RELATIONSHIPCODE_GUARANTOR = 2; // Guarantor
+    RELATIONSHIPCODE_FORMERLY_DOING_BUSINESS_AS = 3; // Formerly Doing Business As
+    RELATIONSHIPCODE_PERSONAL_REPRESENTATIVE = 4; // Personal Representative
+    RELATIONSHIPCODE_DOING_BUSINESS_AS = 5; // Doing Business As
+    RELATIONSHIPCODE_PARTNER = 6; // Partner
+    RELATIONSHIPCODE_FORMERLY_KNOWN_AS = 7; // Formerly Known As
+    RELATIONSHIPCODE_ALSO_KNOWN_AS = 8; // Also Known As
+    RELATIONSHIPCODE_SECURED_PARTY = 9; // Secured Party
+    RELATIONSHIPCODE_ORIGINAL_CREDITOR = 10; // Original Creditor
+    RELATIONSHIPCODE_OWNER = 11; // Owner
+    RELATIONSHIPCODE_PRESIDENT = 12; // President
+    RELATIONSHIPCODE_LIMITED_PARTNER = 13; // Limited Partner
+    RELATIONSHIPCODE_PRINCIPAL = 14; // Principal
+  }
+  RelationshipCode relationship_code = 10;
+  enum Originator {
+    ORIGINATOR_UNSPECIFIED = 0;
+    ORIGINATOR_TERRITORY = 1; // Territory
+    ORIGINATOR_FEDERAL = 2; // Federal
+    ORIGINATOR_MISCELLANEOUS = 3; // Miscellaneous
+    ORIGINATOR_STATE = 4; // State
+    ORIGINATOR_COUNTYPARISH = 5; // County/Parish
+    ORIGINATOR_CITYTOWNSHIP = 6; // City/Township
+  }
+  Originator originator = 11;
+  enum IntentQualifier {
+    INTENTQUALIFIER_UNSPECIFIED = 0;
+    INTENTQUALIFIER_INVOLUNTARY = 1; // Involuntary
+    INTENTQUALIFIER_VOLUNTARY = 2; // Voluntary
+  }
+  IntentQualifier intent_qualifier = 12;
+  string confirmation_type = 13;
+  nav.Date filing_date = 14;
+  string disposition_status = 15;
+  TotalLiabilities total_liabilities = 16;
+  string provider_court = 17;
+  ProSe pro_se = 18;
+  enum DebtorFunds {
+    DEBTORFUNDS_UNSPECIFIED = 0;
+    DEBTORFUNDS_YES = 1; 
+    DEBTORFUNDS_NO = 2; 
+  }
+  DebtorFunds debtor_funds = 19;
+  Initials initials = 20;
+}
+message CurrentSOSDataTrait { // Complex element containing Secretary of State information
+  string registry_number = 1;
+  nav.Date file_data_date = 2;
+  nav.Date incorporation_date = 3;
+  CorpStatusCode corp_status_code = 4;
+  string incorporation_state = 5;
+  TraitActivity trait_activity = 6;
+}
+message CurrentTrade { // Complex element containing information about the current trade.
+  nav.Date high_credit_date = 1;
+  ActiveAccount active_account = 2;
+  repeated AccountComments account_comments = 3;
+  int64 count_30_day_past_due = 4;
+  string past_due_length = 5;
+  string closed_ind = 6;
+  PaymentRating payment_rating = 7;
+  nav.Date charge_off_date = 8;
+  CurrentBalance current_balance = 9;
+  ChargeOffAmount charge_off_amount = 10;
+  int64 count_60_day_past_due = 11;
+  AmtPastDueCycle4 amt_past_due_cycle_4 = 12;
+  AmtPastDueCycle5 amt_past_due_cycle_5 = 13;
+  AmtPastDueCycle2 amt_past_due_cycle_2 = 14;
+  AmtPastDueCycle3 amt_past_due_cycle_3 = 15;
+  int64 count_payment_on_time = 16;
+  AmtPastDueCycle1 amt_past_due_cycle_1 = 17;
+  HiCreditOrOrigLoanAmount hi_credit_or_orig_loan_amount = 18;
+  ReasonClosed reason_closed = 19;
+  OverallStatus overall_status = 20;
+  TraitActivity trait_activity = 21;
+  SecuredAccountIndicator secured_account_indicator = 22;
+  string aging_status = 23;
+  nav.Date most_recent_date_first_del = 24;
+  int64 count_90_day_past_due = 25;
+  LastSaleAmount last_sale_amount = 26;
+  ScheduledPaymentAmount scheduled_payment_amount = 27;
+  int64 count_no_of_guarantors = 28;
+  ChargeOffSource charge_off_source = 29;
+  int64 count_120_day_past_due = 30;
+  LastPaymentAmount last_payment_amount = 31;
+  string non_fi_acct_ind = 32;
+  int64 avg_days_to_pay = 33;
+  nav.Date last_payment_date = 34;
+  string terms = 35;
+  string open_ind = 36;
+  AccountReference account_reference = 37;
+  BalanceAmount balance_amount = 38;
+  int64 years_sold = 39;
+  nav.Date maturity_or_exp_date = 40;
+  OriginalCreditLimit original_credit_limit = 41;
+  RepaymentFrequency repayment_frequency = 43;
+  nav.Date date_closed = 44;
+  AccountIndicator account_indicator = 45;
+  nav.Date acct_opened_date = 46;
+  string payment_history_period = 48;
+  PastDueAmount past_due_amount = 49;
+  string d_high_risk_indicators = 50;
+  nav.Date last_sale_date = 51;
+  LiabilityIndicator liability_indicator = 52;
+  string payment_history_profile = 53;
+  enum AvgDaysToPayDesc {
+    AVGDAYSTOPAYDESC_UNSPECIFIED = 0;
+    AVGDAYSTOPAYDESC_WEIGHTED_AVERAGE_DAYS_FROM_DUE_DATE = 1; 
+    AVGDAYSTOPAYDESC_WEIGHTED_AVERAGE_DAYS_FROM_INVOICE_DATE = 2; 
+    AVGDAYSTOPAYDESC_AVERAGE_DAYS_TO_PAY_FROM_DUE_DATE = 3; 
+    AVGDAYSTOPAYDESC_AVERAGE_DAYS_TO_PAY_FROM_INVOICE_DATE = 4; 
+    AVGDAYSTOPAYDESC_OTHER_AVERAGE_DAYS = 5; 
+  }
+  AvgDaysToPayDesc avg_days_to_pay_desc = 54;
+  PreviousAccountReference previous_account_reference = 55;
+  nav.Date date_of_first_delinquency = 56;
+  int64 count_over_120_day_past_due = 57;
+  string fi_acct_ind = 58;
+  enum GuarantorsOnAccount {
+    GUARANTORSONACCOUNT_UNSPECIFIED = 0;
+    GUARANTORSONACCOUNT_YES = 1; 
+    GUARANTORSONACCOUNT_NO = 2; 
+  }
+  GuarantorsOnAccount guarantors_on_account = 59;
+  ChargeOffRecoveryAmount charge_off_recovery_amount = 60;
+  CurrentCreditLimit current_credit_limit = 61;
+}
+message CustomerSecurityInfo {
+  repeated ProductCode product_codes = 1;
+}
+message DataPoint { // Complex element containing date and DBT information. Used by both CountryDBT and IndustryDBT
+  nav.Date date = 1;
+  int64 value = 2;
+}
+message DecisionTools { // Complex element containing Score Information
+  repeated ScoreData score_datas = 1;
+}
+message FirmographicsTrait { // Complex element containing firmographics data
+  CurrentFirm current_firm = 1;
+}
+message Folder { // Complex element containing company and credit information
+  string efx_id = 1;
+  repeated SOSTrait sos_traits = 2;
+  ReportAttributes report_attributes = 3;
+  repeated IdTrait id_traits = 4;
+  repeated Site sites = 5;
+  FolderActivity folder_activity = 6;
+  repeated Alert alerts = 7;
+  repeated TradeInfo trade_infos = 8;
+  repeated PrincipalTrait principal_traits = 9;
+  DecisionTools decision_tools = 10;
+  repeated Inquiries inquiries = 11;
+  repeated LienTrait lien_traits = 12;
+  repeated UltimateParent ultimate_parents = 13;
+  repeated FirmographicsTrait firmographics_traits = 14;
+  repeated JudgmentTrait judgment_traits = 15;
+  repeated CommentsTrait comments_traits = 16;
+  repeated BankruptcyTrait bankruptcy_traits = 17;
+}
+message FolderActivity { // Complex element containing information about the activity of the folder
+  nav.Date file_creation_date = 1;
+  InquiredIndicator inquired_indicator = 2;
+  enum ParentIndicator {
+    PARENTINDICATOR_UNSPECIFIED = 0;
+    PARENTINDICATOR_OTHER = 1; 
+    PARENTINDICATOR_PARENT = 2; 
+  }
+  ParentIndicator parent_indicator = 3;
+  nav.Date file_activity_date = 4;
+}
+message Header { // Complex element containing request information
+  string customer_number = 1;
+  nav.Date date_of_request = 2;
+}
+message HiCreditOrOrigLoanAmount { // The high credit or original loan amount over the previous 12- month period. For Term Loans, the original commitment amount of the loan excluding interest.
+  string currency = 1;
+  int64 value = 2;
+}
+message HiCreditOrOrigLoanAmtTotals { // Total of high credit or original loan amounts
+  string currency = 1;
+  int64 value = 2;
+}
+message HierarchyProperties { // Complex element containing hierarchy data related to a site. If more than one level applies to the legal entity, then the levels will be compressed and only one level will be presented.
+  enum GlobalUltimateInd {
+    GLOBALULTIMATEIND_UNSPECIFIED = 0;
+    GLOBALULTIMATEIND_YES = 1; 
+  }
+  GlobalUltimateInd global_ultimate_ind = 1;
+  enum HeadquartersInd {
+    HEADQUARTERSIND_UNSPECIFIED = 0;
+    HEADQUARTERSIND_YES = 1; 
+  }
+  HeadquartersInd headquarters_ind = 2;
+  string hierarchy_level = 3;
+  string family_sequence = 4;
+  string global_ultimate_efx_id = 5;
+  enum BusinessLevel {
+    BUSINESSLEVEL_UNSPECIFIED = 0;
+    BUSINESSLEVEL_HEADQUARTERS = 1; // Headquarters
+    BUSINESSLEVEL_GLOBAL_ULTIMATE = 2; // Global Ultimate
+    BUSINESSLEVEL_IMMEDIATE_PARENT = 3; // Immediate Parent
+    BUSINESSLEVEL_BRANCH = 4; // Branch
+    BUSINESSLEVEL_DOMESTIC_ULTIMATE = 5; // Domestic Ultimate
+    BUSINESSLEVEL_SUBSIDIARY = 6; // Subsidiary
+    BUSINESSLEVEL_SINGLE_LOCATION = 7; // Single Location
+  }
+  BusinessLevel business_level = 6;
+  string domestic_ultimate_efx_id = 7;
+  InquiredIndicator inquired_indicator = 8;
+  string domestic_ultimate_ind = 9;
+  enum ReportingType {
+    REPORTINGTYPE_UNSPECIFIED = 0;
+    REPORTINGTYPE_DIVISION = 1; 
+    REPORTINGTYPE_BRANCH = 2; 
+  }
+  ReportingType reporting_type = 10;
+  string parent_or_legal_entity_efx_id = 11;
+  enum SubsidiaryInd {
+    SUBSIDIARYIND_UNSPECIFIED = 0;
+    SUBSIDIARYIND_YES = 1; 
+  }
+  SubsidiaryInd subsidiary_ind = 12;
+}
+message HighestCredit { // The single largest dollar amount extended by a creditor to this business. This figure can reflect credit lines that have not yet been used
+  string currency = 1;
+  int64 value = 2;
+}
+message IdNumberTrait { // Complex element containing information about ID number
+  enum IdNumberIndicator {
+    IDNUMBERINDICATOR_UNSPECIFIED = 0;
+    IDNUMBERINDICATOR_TAX_ID = 1; // Tax ID
+    IDNUMBERINDICATOR_UNKNOWN = 2; // Unknown
+    IDNUMBERINDICATOR_SSN = 3; // SSN
+    IDNUMBERINDICATOR_REPORTED_AS_BOTH_SSN_AND_TAXID = 4; // REPORTED_AS_BOTH_SSN_AND_TAXID
+  }
+  IdNumberIndicator id_number_indicator = 1;
+  string id_number = 2;
+  repeated TradeLinkInfo trade_link_infos = 3;
+  TraitActivity trait_activity = 4;
+}
+message IdTrait { // Complex element containing information about ID number
+  repeated InternetTrait internet_traits = 1;
+  repeated PersonNameTrait person_name_traits = 2;
+  repeated CompanyNameTrait company_name_traits = 3;
+  repeated AddressTrait address_traits = 4;
+  repeated IdNumberTrait id_number_traits = 5;
+}
+message Industry { // The type of industry for the creditor.
+  string code = 1;
+  int64 value = 2;
+}
+message IndustryDBT { // Complex element containing Industry DBT
+  repeated DataPoint data_points = 1;
+  Industry industry = 2;
+}
+message InformationSource { // Complex element containing information about the source of the trait
+  CourtLocation court_location = 1;
+  string name = 2;
+  string industry_code = 3;
+  string industry_group = 4;
+}
+message Initials { // Currently not implemented
+  int64 value = 1;
+  string who = 2;
+}
+message Inquiries { // Complex element containing inquiry information
+  Industry industry = 1;
+  nav.Date inquiry_date = 2;
+}
+message InternetTrait { // Complex element containing web site and e-mail address information
+  string url_name = 1;
+  TraitActivity trait_activity = 2;
+  string email_address = 3;
+}
+message JudgmentTrait { // Complex element containing information about a judgment
+  CurrentPublicRecord current_public_record = 1;
+  repeated PublicRecordID public_record_ids = 2;
+}
+message LastPaymentAmount { // The dollar amount of the last payment received from the business.
+  string currency = 1;
+  int64 value = 2;
+}
+message LastSaleAmount { // The dollar amount of the most recently purchased good or service by a business customer from the data contributor. May be negative.
+  string currency = 1;
+  int64 value = 2;
+}
+message LatestParsedEquifaxCommercialReportRequest {
+  string external_id = 1;
+  string efx_id = 2;
+  ReportType report_type = 3;
+  int64 max_age_in_seconds  = 4; // if report newer than max_age_in_seconds (e.g. within 7 days--604800 seconds) is found is found in cache, return it, otherwise, pull fresh report.
+}
+message LiabilityIndicator { // An indicator of the legal structure of the business.
+  enum Code {
+    CODE_UNSPECIFIED = 0;
+    CODE_SUBCHAPTER_S_CORPORATION = 1; // Subchapter S Corporation
+    CODE_LIMITED_LIABILITY_PARTNERSHIP = 2; // Limited Liability Partnership
+    CODE_CORPORATION = 3; // Corporation
+    CODE_SOLE_PROPRIETOR = 4; // Sole Proprietor
+    CODE_OTHER_LIABILITY_TYPE = 5; // Other Liability Type
+    CODE_PARTNERSHIP = 6; // Partnership
+    CODE_SUBCHAPTER_C_CORPORATION = 7; // Subchapter C Corporation
+    CODE_LIMITED_LIABILITY_COMPANY = 8; // Limited Liability Company
+    CODE_LIMITED_PARTNERSHIP = 9; // Limited Partnership
+  }
+  Code code = 1;
+  
+}
+message LienTrait { // Complex element containing information about a lien
+  CurrentPublicRecord current_public_record = 1;
+  repeated PublicRecordID public_record_ids = 2;
+}
+message LocationDescription { // Description of location
+  enum Code {
+    CODE_UNSPECIFIED = 0;
+    CODE_DEPARTMENT_STORE = 1; // Department Store
+    CODE_BRANCH = 2; // Branch
+    CODE_SINGLE_ENTITY = 3; // Single Entity
+    CODE_MULTIPLE_NAME = 4; // Multiple Name
+    CODE_HEADQUARTERS = 5; // Headquarters
+  }
+  Code code = 1;
+  
+}
+message MedianBalance { // The median balance for all financial or non-financial trades.
+  string currency = 1;
+  int64 value = 2;
+}
+message NewChargeOffAmt { // Total reported charge off dollars reported within 3 calendar months of the inquiry date.
+  string currency = 1;
+  int64 value = 2;
+}
+message NewHiCreditExt { // The single largest high credit, original loan, current credit or balance dollar amount extended to this business during the most recent 3 calendar months.
+  string currency = 1;
+  int64 value = 2;
+}
+message NonFinancialSummary { // Complex element containing summary attributes for non- financial tradelines
+  repeated IndustryDBT industry_dbts = 1;
+  SummaryAttributes summary_attributes = 2;
+  int64 recent_dbt = 3;
+  repeated CountryDBT country_dbts = 4;
+  repeated AvgDBT avg_dbts = 5;
+}
+message NumberOfEmployees { // Number of employees of a company given as a range. Consists of a code and verbiage
+  enum Code {
+    CODE_UNSPECIFIED = 0;
+    CODE_2500_TO_4999 = 1; 
+    CODE_1000_TO_2499 = 2; 
+    CODE_5000_TO_9999 = 3; 
+    CODE_20000_PLUS = 4; 
+    CODE_15000_TO_19999 = 5; 
+    CODE_2_TO_4 = 6; 
+    CODE_5_TO_9 = 7; 
+    CODE_10000_TO_14999 = 8; 
+    CODE_1 = 9; 
+    CODE_50_TO_99 = 10; 
+    CODE_100_TO_249 = 11; 
+    CODE_10_TO_24 = 12; 
+    CODE_25_TO_49 = 13; 
+    CODE_250_TO_499 = 14; 
+    CODE_500_TO_999 = 15; 
+  }
+  Code code = 1;
+}
+message OpenNonFiByIndGroup { // Complex element containing summary elements for open non-financial accounts grouped by industry group.
+  OpenSummaryAttributesTotals open_summary_attributes_totals = 1;
+  TimePeriod time_period = 2;
+  repeated OpenSummaryAttributes open_summary_attributes = 3;
+}
+message OpenSummaryAttributes { // Complex element containing summary elements for open accounts.
+  SumOfPastDue sum_of_past_due = 1;
+  AgingDollarsSlow120Plus aging_dollars_slow_120_plus = 2;
+  enum SingleMostSevereStatus {
+    SINGLEMOSTSEVERESTATUS_UNSPECIFIED = 0;
+    SINGLEMOSTSEVERESTATUS_SLOW_UP_TO_120 = 1; // Slow up to 120
+    SINGLEMOSTSEVERESTATUS_REPOSSESSION_OR_FORECLOSURE = 2; // Repossession or Foreclosure
+    SINGLEMOSTSEVERESTATUS_SLOW = 3; // Slow
+    SINGLEMOSTSEVERESTATUS_CANNOT_BE_DETERMINED = 4; // Cannot be Determined.
+    SINGLEMOSTSEVERESTATUS_CHARGE_OFF = 5; // Charge Off
+    SINGLEMOSTSEVERESTATUS_CURRENT = 6; // Current
+    SINGLEMOSTSEVERESTATUS_SLOW_UP_TO_60 = 7; // Slow up to 60
+    SINGLEMOSTSEVERESTATUS_SLOW_UP_TO_30 = 8; // Slow up to 30
+    SINGLEMOSTSEVERESTATUS_SLOW_121 = 9; // Slow 121+
+    SINGLEMOSTSEVERESTATUS_COLLECTION = 10; // Collection
+    SINGLEMOSTSEVERESTATUS_NONACCRUAL_ACCOUNT = 11; // Non-Accrual Account
+    SINGLEMOSTSEVERESTATUS_SLOW_UP_TO_90 = 12; // Slow up to 90
+  }
+  SingleMostSevereStatus single_most_severe_status = 3;
+  int64 percent_slow_120_plus = 4;
+  int64 percent_slow_120 = 5;
+  AgingDollarsSlow30 aging_dollars_slow_30 = 6;
+  AgingDollarsSlow120 aging_dollars_slow_120 = 7;
+  SumOfBalances sum_of_balances = 8;
+  int64 percent_slow_60 = 9;
+  string single_highest_total_past_due = 10;
+  int64 num_open_accts = 11;
+  int64 percent_slow_30 = 12;
+  AgingDollarsSlow60 aging_dollars_slow_60 = 13;
+  int64 percent_slow_90 = 14;
+  AgingDollarsSlow90 aging_dollars_slow_90 = 15;
+  string industry_group = 16;
+  string single_hi_credit_ext_or_bal_owed = 17;
+}
+message OpenSummaryAttributesTotals { // Complex element containing summary element totals for open accounts.
+  SumOfPastDue sum_of_past_due = 1;
+  AgingDollarsSlow120Plus aging_dollars_slow_120_plus = 2;
+  int64 percent_slow_120_plus = 3;
+  int64 percent_slow_120 = 4;
+  AgingDollarsSlow30 aging_dollars_slow_30 = 5;
+  AgingDollarsSlow120 aging_dollars_slow_120 = 6;
+  SumOfBalances sum_of_balances = 7;
+  int64 percent_slow_60 = 8;
+  int64 num_open_accts = 9;
+  int64 percent_slow_30 = 10;
+  AgingDollarsSlow60 aging_dollars_slow_60 = 11;
+  int64 percent_slow_90 = 12;
+  AgingDollarsSlow90 aging_dollars_slow_90 = 13;
+}
+message OpenTotalPastDue { // The whole dollar amount beyond the due date for open accounts.
+  string currency = 1;
+  int64 value = 2;
+}
+message OriginalCreditLimit { // The opening amount of credit given to the business account.
+  string currency = 1;
+  int64 value = 2;
+}
+message OverallStatus { // Indicates the most severe delinquent status present on the current trade. Consists of a code and verbiage.
+  enum Code {
+    CODE_UNSPECIFIED = 0;
+    CODE_SLOW = 1; // "S"
+    CODE_CANNOT_BE_DETERMINED = 2; // "B"
+		CODE_CURRENT = 3; // "0"
+		CODE_SLOW_UP_TO_30 = 4; // "1"
+		CODE_SLOW_UP_TO_60 = 5; // "2"
+		CODE_SLOW_UP_TO_90 = 6; // "3"
+		CODE_SLOW_UP_TO_120 = 7; // "4"
+		CODE_SLOW_121 = 8; // "5"
+		CODE_COLLECTION = 9; // "6"
+		CODE_NONACCRUAL_ACCOUNT = 10; // "7"
+		CODE_REPOSSESSION_OR_FORECLOSURE = 11; // "8"
+		CODE_CHARGE_OFF = 12; // "9"
+  }
+  Code code = 1;
+}
+message ParsedCommercialReportResponse {
+  Report report = 1;
+  google.protobuf.Timestamp created_at = 2;
+  string uuid = 3;
+}
+message PastDueAmount { // Amount Past Due
+  string currency = 1;
+  int64 value = 2;
+}
+message PastDueAmtTotals { // Total amount past due for all financial or non-financial accounts.
+  string currency = 1;
+  int64 value = 2;
+}
+message PaymentIndexInfo { // Complex element containing business and industry payment index information
+  string non_fi_payment_index_business = 1;
+}
+message PaymentRating { // Deprecated
+  string code = 1;
+  int64 value = 2;
+}
+message PersonNameTrait { // Complex element containing an individuals name
+  string last_name = 1;
+  string name_suffix = 2;
+  string first_name = 3;
+  TraitActivity trait_activity = 4;
+  string middle_name = 5;
+}
+message PreviousAccountReference { // If Commercial Information Solutions received an update with account number changes, this will contain the previous reference if the account is not associated with any of the portfolio data submission numbers provided on inquiry in the DSNX segment.
+  string reference_type = 1;
+  int64 value = 2;
+}
+message PrincipalInfoSource { // Complex element containing information about the principal
+  PreviousAccountReference previous_account_reference = 1;
+  AccountReference account_reference = 2;
+  int64 percentage_of_ownership = 3;
+  enum IsGuarantor {
+    ISGUARANTOR_UNSPECIFIED = 0;
+    ISGUARANTOR_YES = 1; 
+    ISGUARANTOR_BOTH = 2; 
+    ISGUARANTOR_NO = 3; 
+  }
+  IsGuarantor is_guarantor = 4;
+}
+message PrincipalTrait { // Complex element containing information about the principal or guarantor
+  Folder folder = 1;
+  repeated PrincipalInfoSource principal_info_sources = 2;
+  TraitActivity trait_activity = 3;
+}
+message PriorParsedEquifaxCommercialReportRequest {
+  string external_id = 1;
+  string efx_id = 2;
+  ReportType report_type = 3;
+  int64 min_age_in_seconds = 4; // return the newest report that is older than min_age_in_seconds (e.g. created more than 7 days, 604800 seconds, ago). Return error if none found.
+}
+message ProductCode { // Code identifying product(s) requested
+  string code = 1;
+  string name = 2;
+  string value = 3;
+}
+message PublicRecordID { // Complex element containing the addresses, names and phone numbers of individuals or entities associated with a lien or judgment.
+  EntityCode entity_code = 1;
+  DebtorCode debtor_code = 2;
+  enum RelationshipCode {
+    RELATIONSHIPCODE_UNSPECIFIED = 0;
+    RELATIONSHIPCODE_NOW_KNOWN_AS = 1; // Now Known As
+    RELATIONSHIPCODE_GUARANTOR = 2; // Guarantor
+    RELATIONSHIPCODE_FORMERLY_DOING_BUSINESS_AS = 3; // Formerly Doing Business As
+    RELATIONSHIPCODE_PERSONAL_REPRESENTATIVE = 4; // Personal Representative
+    RELATIONSHIPCODE_DOING_BUSINESS_AS = 5; // Doing Business As
+    RELATIONSHIPCODE_PARTNER = 6; // Partner
+    RELATIONSHIPCODE_FORMERLY_KNOWN_AS = 7; // Formerly Known As
+    RELATIONSHIPCODE_ALSO_KNOWN_AS = 8; // Also Known As
+    RELATIONSHIPCODE_SECURED_PARTY = 9; // Secured Party
+    RELATIONSHIPCODE_ORIGINAL_CREDITOR = 10; // Original Creditor
+    RELATIONSHIPCODE_OWNER = 11; // Owner
+    RELATIONSHIPCODE_PRESIDENT = 12; // President
+    RELATIONSHIPCODE_LIMITED_PARTNER = 13; // Limited Partner
+    RELATIONSHIPCODE_PRINCIPAL = 14; // Principal
+  }
+  RelationshipCode relationship_code = 3;
+  Folder folder = 4;
+  ProSe pro_se = 5;
+  TraitActivity trait_activity = 6;
+}
+message PublicRecordsSummary { // Complex element containing summarized attributes about all public records information contained in the business record or conditions that apply to the entire business record.
+  int64 number_of_liens = 1;
+  int64 total_released_liens = 2;
+  int64 number_of_bankruptcies = 3;
+  TotalBankruptcyAmount total_bankruptcy_amount = 4;
+  string total_filed_liens = 5;
+  TotalFiledLienAmount total_filed_lien_amount = 6;
+  TotalLienAmount total_lien_amount = 7;
+  nav.Date recent_bankruptcy_date = 8;
+  int64 total_satisfied_judgments = 9;
+  nav.Date recent_lien_date = 10;
+  TotalJudgmentAmount total_judgment_amount = 11;
+  int64 number_of_judgments = 12;
+  TotalReleasedLienAmount total_released_lien_amount = 13;
+  TotalSatisfiedJudgmentAmount total_satisfied_judgment_amount = 14;
+  nav.Date recent_judgment_date = 15;
+}
+message ReasonCode { // The first byte indicates the type of credit file which generated this attribute. If adverse action letters are returned to the business owner then it is recommended that only reason codes A and C are output on the letter. Reason codes E - H can be considered neutral. The remainder of the field indicates the attribute
+  string code = 1;
+  string value = 2;
+  string score = 3;
+}
+message Reject { // Reject Code
+  enum Code {
+    CODE_UNSPECIFIED = 0;
+    CODE_MINIMUM_NUMBER_OF_TRADES_NOT_REPORTED_WITHIN_THE_LAST_24_MONTHS = 1;  // R4
+    NO_RECENT_BUSINESS_ACCOUNT_INFORMATION_AVAILABLE = 2; // R1
+    DATA_AVAILABLE_DOES_NOT_MEET_MINIMUM_SCORING_CRITERIA = 3; // R2
+  }
+  Code code = 1;
+}
+message Report { // EfxTransmit
+  repeated ProductCode product_codes = 8;
+  string efx_internal_tran_id = 4;
+  string customer_reference = 6;
+  repeated StandardRequest standard_requests = 3;
+  string version = 7;
+  enum ServiceCode {
+    SERVICECODE_UNSPECIFIED = 0;
+    SERVICECODE_SB1 = 1; 
+  }
+  ServiceCode service_code = 5;
+  repeated CommercialCreditReport commercial_credit_reports = 2;
+  repeated CustomerSecurityInfo customer_security_infos = 1;
+}
+message ReportAttributes { // Complex element containing summary attributes.
+  nav.Date as_of_date_24_mo = 1;
+  PublicRecordsSummary public_records_summary = 2;
+  ClosedNonFiByIndGroup closed_non_fi_by_ind_group = 3;
+  nav.Date as_of_date_today = 4;
+  NonFinancialSummary non_financial_summary = 5;
+  OpenNonFiByIndGroup open_non_fi_by_ind_group = 6;
+  nav.Date as_of_date_3_mo = 7;
+  PaymentIndexInfo payment_index_info = 8;
+  nav.Date recent_since_date = 9;
+}
+message SOSTrait { // Complex element containing Secretary of State information
+  CurrentSOSDataTrait current_sos_data_trait = 1;
+  repeated BusinessContactTrait business_contact_traits = 2;
+  TraitActivity trait_activity = 3;
+  IdTrait id_trait = 4;
+}
+message ScheduledPaymentAmount { // Scheduled Payment Amount
+  string currency = 1;
+  int64 value = 2;
+}
+message ScoreData { // Complex element containing score information (Only returned if an optional score product is ordered)
+  string risk_level = 1;
+  string seqno = 2;
+  string score_name = 3;
+  repeated ReasonCode reason_codes = 4;
+  string score = 5;
+  string score_type = 6;
+  Reject reject = 7;
+  string risk_description = 8;
+}
+message Site { // Complex element containing information about an individual site.
+  string efx_id = 1;
+  IdTrait id_trait = 2;
+  FirmographicsTrait firmographics_trait = 3;
+  FolderActivity folder_activity = 4;
+  repeated PrincipalTrait principal_traits = 5;
+  HierarchyProperties hierarchy_properties = 6;
+}
+message StandardRequest {
+  Folder folder = 1;
+  string candid = 2;
+}
+message SumOfBalChargeOff { // The sum of all balances for charged off accounts of this account type or industry group.
+  string currency = 1;
+  int64 value = 2;
+}
+message SumOfBalDelinquent { // The sum of all balances for closed delinquent accounts of this account type or industry group
+  string currency = 1;
+  int64 value = 2;
+}
+message SumOfBalances { // The sum of all balances for accounts of this account type or industry group.
+  string currency = 1;
+  int64 value = 2;
+}
+message SumOfHighCredit { // The sum of all the high credit for accounts of this account type or industry group
+  string currency = 1;
+  int64 value = 2;
+}
+message SumOfPastDue { // The sum of past due amounts for accounts of this account type or industry group.
+  string currency = 1;
+  int64 value = 2;
+}
+message SummaryAttributes { // Complex element containing summary attributes
+  TotBal tot_bal = 1;
+  HiCreditOrOrigLoanAmtTotals hi_credit_or_orig_loan_amt_totals = 2;
+  PastDueAmtTotals past_due_amt_totals = 3;
+  int64 number_of_active_trades = 4;
+  string most_severe_status = 5;
+  HighestCredit highest_credit = 6;
+  string new_charge_off_accts = 7;
+  AverageOpenBalance average_open_balance = 8;
+  int64 number_of_accounts = 9;
+  BalanceTotals balance_totals = 10;
+  int64 new_non_charge_off_del = 11;
+  BalDue bal_due = 12;
+  int64 new_inquiries = 13;
+  ChargeOffAmt charge_off_amt = 14;
+  OpenTotalPastDue open_total_past_due = 15;
+  int64 acct_open = 16;
+  MedianBalance median_balance = 17;
+  TotalExposure total_exposure = 18;
+  string credit_active_since = 19;
+  int64 num_closed = 20;
+  CurrentCreditLimitTotals current_credit_limit_totals = 21;
+  int64 number_of_charge_offs = 22;
+  AtRiskBal at_risk_bal = 23;
+  enum MostSevereStatus24Months {
+    MOSTSEVERESTATUS24MONTHS_UNSPECIFIED = 0;
+    MOSTSEVERESTATUS24MONTHS_SLOW_UP_TO_120 = 1; // Slow up to 120
+    MOSTSEVERESTATUS24MONTHS_REPOSSESSION_OR_FORECLOSURE = 2; // Repossession or Foreclosure
+    MOSTSEVERESTATUS24MONTHS_SLOW = 3; // Slow
+    MOSTSEVERESTATUS24MONTHS_CHARGE_OFF = 4; // Charge Off
+    MOSTSEVERESTATUS24MONTHS_SLOW_UP_TO_60 = 5; // Slow up to 60
+    MOSTSEVERESTATUS24MONTHS_CURRENT = 6; // Current
+    MOSTSEVERESTATUS24MONTHS_SLOW_UP_TO_30 = 7; // Slow up to 30
+    MOSTSEVERESTATUS24MONTHS_CANNOT_BE_DETERMINED = 8; // Cannot be determined
+    MOSTSEVERESTATUS24MONTHS_SLOW_121 = 9; // Slow 121+
+    MOSTSEVERESTATUS24MONTHS_COLLECTION = 10; // Collection
+    MOSTSEVERESTATUS24MONTHS_NONACCRUAL_ACCOUNT = 11; // Non-Accrual Account
+    MOSTSEVERESTATUS24MONTHS_CLOSED_ACCOUNT = 12; // Closed Account
+    MOSTSEVERESTATUS24MONTHS_SLOW_UP_TO_90 = 13; // Slow up to 90
+  }
+  MostSevereStatus24Months most_severe_status_24_months = 24;
+  int64 new_delinquencies = 25;
+  string new_acct_closed = 26;
+  string non_charge_off_del = 27;
+  enum NewMostSevStatus {
+    NEWMOSTSEVSTATUS_UNSPECIFIED = 0;
+    NEWMOSTSEVSTATUS_SLOW_UP_TO_120 = 1; // Slow up to 120
+    NEWMOSTSEVSTATUS_REPOSSESSION_OR_FORECLOSURE = 2; // Repossession or Foreclosure
+    NEWMOSTSEVSTATUS_SLOW = 3; // Slow
+    NEWMOSTSEVSTATUS_CHARGE_OFF = 4; // Charge Off
+    NEWMOSTSEVSTATUS_CURRENT = 5; // Current
+    NEWMOSTSEVSTATUS_SLOW_UP_TO_60 = 6; // Slow up to 60
+    NEWMOSTSEVSTATUS_SLOW_UP_TO_30 = 7; // Slow up to 30
+    NEWMOSTSEVSTATUS_SLOW_121 = 8; // Slow 121+
+    NEWMOSTSEVSTATUS_COLLECTION = 9; // Collection
+    NEWMOSTSEVSTATUS_NONACCRUAL_ACCOUNT = 10; // Non-Accrual Account
+    NEWMOSTSEVSTATUS_SLOW_UP_TO_90 = 11; // Slow up to 90
+  }
+  NewMostSevStatus new_most_sev_status = 28;
+  NewChargeOffAmt new_charge_off_amt = 29;
+  int64 new_updates = 30;
+  int64 new_accounts = 31;
+  TotalPastDue total_past_due = 32;
+  NewHiCreditExt new_hi_credit_ext = 33;
+}
+message TelephoneTrait { // Complex element containing telephone information
+  enum PublishedIndicator {
+    PUBLISHEDINDICATOR_UNSPECIFIED = 0;
+    PUBLISHEDINDICATOR_UNKNOWN = 1; // Unknown
+    PUBLISHEDINDICATOR_PUBLISHED_AND_BLOCKED = 2; // Published and blocked
+    PUBLISHEDINDICATOR_NONPUBLISHED = 3; // Non-published
+    PUBLISHEDINDICATOR_UNLISTED = 4; // Unlisted
+    PUBLISHEDINDICATOR_PUBLISHED = 5; // Published
+  }
+  PublishedIndicator published_indicator = 1;
+  string telephone_number = 2;
+}
+message TimePeriod { // The number of months of trade data reported prior to the as of date used to calculate a set of summary attributes. Currently the time period is set for OpenFiByAcctType, ClosedFiByAcctType, OpenNonFiByIndGroup, and ClosedNonFiByIndGroup.
+  int64 value = 1;
+  string type = 2;
+}
+message Title { // The professional title of the individual being reported.
+  string detail = 1;
+  int64 value = 2;
+}
+message TitleTrait { // Complex element containing information about professional title
+  TraitActivity trait_activity = 1;
+  Title title = 2;
+}
+message TotBal { // Total reported balance, including owed but not yet due and all past due amounts.
+  string currency = 1;
+  int64 value = 2;
+}
+message TotalAssets { // Bankruptcy - Contains the assets of the debtor. Public Records - Contains the principal amount of the action (does not include penalties, interest, fees, costs etc.)
+  string currency = 1;
+  int64 value = 2;
+}
+message TotalBankruptcyAmount { // The total liability amount for all distinct bankruptcies present on the file.
+  string currency = 1;
+  int64 value = 2;
+}
+message TotalExposure { // The maximum potential liability the business could incur based upon recent account information. Financial amount includes balances owed plus available credit limit; Non-Financial is a total of balances owed.
+  string currency = 1;
+  int64 value = 2;
+}
+message TotalFiledLienAmount { // The total liability amount for all distinct liens present on the file where the Disposition Status is equal Filed.
+  string currency = 1;
+  int64 value = 2;
+}
+message TotalJudgmentAmount { // The total liability amount for all distinct judgments present on the file.
+  string currency = 1;
+  int64 value = 2;
+}
+message TotalLiabilities { // The liabilities of the debtor.
+  string currency = 1;
+  int64 value = 2;
+}
+message TotalLienAmount { // The total liability amount for all distinct liens present on the file.
+  string currency = 1;
+  int64 value = 2;
+}
+message TotalPastDue { // The whole dollar amount beyond the due date.
+  string currency = 1;
+  int64 value = 2;
+}
+message TotalReleasedLienAmount { // The total liability amount for all distinct liens present on the file where the Disposition Status is equal Released.
+  string currency = 1;
+  int64 value = 2;
+}
+message TotalSatisfiedJudgmentAmount { // The total liability amount for all distinct judgments present on the file where the Disposition Status is equal Satisfied.
+  string currency = 1;
+  int64 value = 2;
+}
+message TradeHistory {
+  LastPaymentAmount last_payment_amount = 1;
+  ActiveAccount active_account = 2;
+  repeated AccountComments account_comments = 3;
+  int64 count_30_day_past_due = 4;
+  string past_due_length = 5;
+  PaymentRating payment_rating = 6;
+  nav.Date charge_off_date = 7;
+  CurrentBalance current_balance = 8;
+  nav.Date high_credit_date = 9;
+  ChargeOffAmount charge_off_amount = 10;
+  int64 count_60_day_past_due = 11;
+  AmtPastDueCycle4 amt_past_due_cycle_4 = 12;
+  AmtPastDueCycle5 amt_past_due_cycle_5 = 13;
+  AmtPastDueCycle2 amt_past_due_cycle_2 = 14;
+  AmtPastDueCycle3 amt_past_due_cycle_3 = 15;
+  int64 count_payment_on_time = 16;
+  AmtPastDueCycle1 amt_past_due_cycle_1 = 17;
+  HiCreditOrOrigLoanAmount hi_credit_or_orig_loan_amount = 18;
+  ReasonClosed reason_closed = 19;
+  OverallStatus overall_status = 20;
+  TraitActivity trait_activity = 21;
+  SecuredAccountIndicator secured_account_indicator = 22;
+  int64 count_90_day_past_due = 23;
+  LastSaleAmount last_sale_amount = 24;
+  ScheduledPaymentAmount scheduled_payment_amount = 25;
+  ChargeOffSource charge_off_source = 26;
+  int64 count_120_day_past_due = 27;
+  int64 avg_days_to_pay = 28;
+  nav.Date last_payment_date = 29;
+  string terms = 30;
+  AccountReference account_reference = 31;
+  BalanceAmount balance_amount = 32;
+  int64 years_sold = 33;
+  nav.Date maturity_or_exp_date = 34;
+  OriginalCreditLimit original_credit_limit = 35;
+  RepaymentFrequency repayment_frequency = 37;
+  nav.Date date_closed = 38;
+  AccountIndicator account_indicator = 39;
+  nav.Date acct_opened_date = 40;
+  string payment_history_period = 42;
+  PastDueAmount past_due_amount = 43;
+  string d_high_risk_indicators = 44;
+  nav.Date last_sale_date = 45;
+  LiabilityIndicator liability_indicator = 46;
+  enum AvgDaysToPayDesc {
+    AVGDAYSTOPAYDESC_UNSPECIFIED = 0;
+    AVGDAYSTOPAYDESC_WEIGHTED_AVERAGE_DAYS_FROM_DUE_DATE = 1; 
+    AVGDAYSTOPAYDESC_WEIGHTED_AVERAGE_DAYS_FROM_INVOICE_DATE = 2; 
+    AVGDAYSTOPAYDESC_AVERAGE_DAYS_TO_PAY_FROM_DUE_DATE = 3; 
+    AVGDAYSTOPAYDESC_AVERAGE_DAYS_TO_PAY_FROM_INVOICE_DATE = 4; 
+    AVGDAYSTOPAYDESC_OTHER_AVERAGE_DAYS = 5; 
+  }
+  AvgDaysToPayDesc avg_days_to_pay_desc = 47;
+  PreviousAccountReference previous_account_reference = 48;
+  nav.Date date_of_first_delinquency = 49;
+  int64 count_over_120_day_past_due = 50;
+  enum GuarantorsOnAccount {
+    GUARANTORSONACCOUNT_UNSPECIFIED = 0;
+    GUARANTORSONACCOUNT_YES = 1; 
+    GUARANTORSONACCOUNT_NO = 2; 
+  }
+  GuarantorsOnAccount guarantors_on_account = 51;
+  ChargeOffRecoveryAmount charge_off_recovery_amount = 52;
+  CurrentCreditLimit current_credit_limit = 53;
+}
+message TradeInfo { // Complex element containing information about current and historical trade information
+  repeated TradeHistory trade_historys = 1;
+  CurrentTrade current_trade = 2;
+}
+message TradeLinkInfo { // Complex element containing information linking addresses, names, and other ID information to the trade with which it was reported
+  nav.Date reported_date = 1;
+  AccountReference account_reference = 2;
+}
+message TraitActivity { // Complex element containing information regarding activity to the associated information.
+  InformationSource information_source = 1;
+  nav.Date reported_date = 2;
+  nav.Date date_created = 3;
+  enum PrimaryIndicator {
+    PRIMARYINDICATOR_UNSPECIFIED = 0;
+    PRIMARYINDICATOR_OTHER = 1; // OTHER
+    PRIMARYINDICATOR_ADDITIONAL = 2; // ADDITIONAL
+    PRIMARYINDICATOR_PRIMARY = 3; // PRIMARY
+  }
+  PrimaryIndicator primary_indicator = 4;
+}
+message UltimateParent { // Complex element containing ID information for the ultimate parent site..
+  string efx_id = 1;
+  FolderActivity folder_activity = 2;
+  IdTrait id_trait = 3;
+}
