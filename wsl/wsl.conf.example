@@ -1,0 +1,13 @@
+# Support Docker Desktop by creating cross distro mounts. A distro can opt-in to this behavior by adding the following line to the /etc/wsl.conf file:
+[automount]
+crossDistro = true
+
+# Add the ability to set default username in /etc/wsl.conf:
+# Needed if installing your own wsl instance and don't want to manually set the users everytime you enter the instance
+[user]
+default=<string>
+
+# Add wsl.conf entries for controlling Windows interop behavio
+[interop]
+enabled=false # enable launch of Windows binaries; default is true
+appendWindowsPath=false # append Windows path to $PATH variable; default is true
